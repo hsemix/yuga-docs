@@ -34,7 +34,7 @@ use Yuga\Models\ElegantModel as Elegant;
 class User extends Elegant
 {
     /**
-     * @param Yuga\Events\Dispatcher $event
+     * @param \Yuga\Events\Dispatcher $event
      * @param \Yuga\Database\Elegant\Builder $query
      * @param \Yuga\Database\Elegant\Collection $results
      */
