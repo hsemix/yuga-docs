@@ -34,10 +34,11 @@ use Yuga\Models\ElegantModel as Elegant;
 class User extends Elegant
 {
     /**
+     * @param Yuga\Events\Dispatcher $event
      * @param \Yuga\Database\Elegant\Builder $query
      * @param \Yuga\Database\Elegant\Collection $results
      */
-    public function onSelected($query, $results)
+    public function onSelected($event, $query, $results)
     {
         return $results->map(function ($user) {
             $user->fullname = strtoupper($user->fullname);
