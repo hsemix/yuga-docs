@@ -408,7 +408,7 @@ use Yuga\Database\Elegant\Model as Elegant;
 class User extends Elegant
 {
     /**
-    * Use this method to run a customized validation on a model bound to a view-mode's form
+    * Use this method to run a customized validation on a model bound to a view-model's form
     */
     public function validate(): ?array
     {
