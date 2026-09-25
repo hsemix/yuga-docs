@@ -1,12 +1,12 @@
 ---
-description: Hax is Yuga's simple, compiled PHP template engine
+description: Hax is Yuga's compiled, HTML-first PHP template engine
 ---
 
 # Hax Templates
 
-Hax is Yuga's template engine for MVC views. It adds convenient template syntax while still allowing ordinary PHP when you need it.
+Hax is Yuga's template engine for MVC views. It provides convenient template syntax while remaining close to HTML and PHP.
 
-Hax templates use the `.hax.php` extension and are normally stored in `resources/views`. They are compiled to plain PHP and cached, so the template syntax does not need to be interpreted on every render.
+Hax templates use the `.hax.php` extension and are normally stored in `resources/views`. They are compiled to plain PHP and cached.
 
 ```text
 resources/
@@ -14,44 +14,33 @@ resources/
     ├── layouts/
     │   └── app.hax.php
     ├── components/
-    │   └── alert.hax.php
+    │   ├── alert.hax.php
+    │   └── form/
+    │       └── input.hax.php
     └── users/
         └── profile.hax.php
 ```
 
-A view can be rendered with:
-
 ```php
-return view('users.profile', [
-    'user' => $user,
-]);
+return view('users.profile', ['user' => $user]);
 ```
 
 ## Displaying data
 
-Use double curly braces for escaped output:
+Escaped output:
 
 ```html
 <h1>Hello, {{ $user->name }}</h1>
+{{ $name or 'Guest' }}
 ```
 
-Hax escapes this output with `htmlspecialchars`.
-
-For trusted content that should not be escaped, use raw echo syntax:
+Raw output for trusted content:
 
 ```html
 {!! $html !!}
 ```
 
-Hax also supports a default-value form for variables:
-
-```html
-{{ $name or 'Guest' }}
-```
-
-## Comments
-
-Hax comments are removed during compilation:
+Comments are removed during compilation:
 
 ```html
 {{-- This will not be included in the rendered HTML. --}}
@@ -59,29 +48,7 @@ Hax comments are removed during compilation:
 
 ## Template inheritance
 
-Layouts allow several pages to share the same structure.
-
-### Defining a layout
-
 ```html
-<!-- resources/views/layouts/app.hax.php -->
-
-<!doctype html>
-<html>
-<head>
-    <title>@yield('title')</title>
-</head>
-<body>
-    <main>
-        @yield('content')
-    </main>
-</body>
-</html>
-```
-
-### Extending a layout
-
-```php
 @extends('layouts.app')
 
 @section('title')
@@ -93,37 +60,25 @@ Layouts allow several pages to share the same structure.
 @endsection
 ```
 
-### Parent section content
+A layout renders sections with:
 
-Use `@parent` when a child section should retain content defined by its parent:
-
-```php
-@section('sidebar')
-    @parent
-
-    <a href="/profile">Profile</a>
-@endsection
+```html
+<title>@yield('title')</title>
+<main>@yield('content')</main>
 ```
+
+Use `@parent` when a child section should retain parent content.
 
 ## Includes
 
-Use `@include` to render another view:
-
 ```php
 @include('partials.header')
-```
-
-The included view receives the variables currently defined in the parent template.
-
-You can also pass additional data:
-
-```php
 @include('partials.user', ['user' => $user])
 ```
 
-## Conditionals
+Included views receive the variables currently defined in the calling template.
 
-Hax conditionals map directly to PHP conditionals:
+## Conditionals and loops
 
 ```php
 @if ($user->isAdmin())
@@ -133,29 +88,15 @@ Hax conditionals map directly to PHP conditionals:
 @else
     <p>User</p>
 @endif
-```
 
-## Loops
-
-### Foreach
-
-```php
 @foreach ($users as $user)
     <p>{{ $user->name }}</p>
 @endforeach
-```
 
-### For
-
-```php
 @for ($i = 0; $i < 10; $i++)
     <span>{{ $i }}</span>
 @endfor
-```
 
-### While
-
-```php
 @while ($condition)
     ...
 @endwhile
@@ -163,42 +104,27 @@ Hax conditionals map directly to PHP conditionals:
 
 ## Raw PHP
 
-For small pieces of PHP, pass an expression directly:
-
 ```php
 @php($total = count($items))
-```
 
-For a PHP block:
-
-```php
 @php
     $total = count($items);
     $label = 'items';
 @endphp
 ```
 
-Because Hax compiles to PHP, ordinary PHP can also be used in a template when appropriate.
-
 ## Components
 
-Reusable view components use the `x-` syntax.
-
-### Self-closing components
+Application components are resolved beneath `resources/views/components`.
 
 ```html
 <x-alert type="success" :message="$message" />
-```
-
-Literal attributes are strings. Prefix an attribute with `:` to treat its value as a PHP expression.
-
-Boolean attributes are also supported:
-
-```html
 <x-button disabled />
 ```
 
-### Components with content
+Literal attributes are strings, `:` marks a PHP expression, and boolean attributes are supported.
+
+Components may wrap content:
 
 ```html
 <x-card title="Account">
@@ -206,9 +132,17 @@ Boolean attributes are also supported:
 </x-card>
 ```
 
-The wrapped content becomes the component's default slot.
+The wrapped content becomes `$slot`.
 
-### Named slots
+Nested components use dot notation:
+
+```html
+<x-form.input />
+```
+
+which resolves to `components/form/input.hax.php`.
+
+Named slots are supported:
 
 ```html
 <x-card>
@@ -220,11 +154,16 @@ The wrapped content becomes the component's default slot.
 </x-card>
 ```
 
-For more detail, see [Layouts, Components, Slots, and Fragments](layouts-components.md).
+Namespaced package components use the same namespace registry as views:
+
+```html
+<x-blog::card />
+<x-blog::forms.input />
+```
+
+See [Layouts, Components, Slots, and Fragments](layouts-components.md) for component attributes and the attribute bag.
 
 ## Fragments
-
-A Hax template can define named fragments:
 
 ```html
 <fragment name="results">
@@ -234,111 +173,53 @@ A Hax template can define named fragments:
 </fragment>
 ```
 
-Fragments allow the view engine and packages built on it to address a specific rendered portion of a view.
+A fragment can be returned independently with `view(...)->fragment('results')`. Fragments are a core Views feature and do not require Yuga Live Components.
 
-## Stacks
-
-Stacks are useful for content that a child view or component wants to contribute to another location, such as scripts or styles.
-
-Push content:
+## Stacks and render-once blocks
 
 ```php
 @push('scripts')
     <script src="/js/dashboard.js"></script>
 @endpush
-```
 
-Render the stack:
-
-```php
-@stack('scripts')
-```
-
-Content can be inserted before existing pushed content with:
-
-```php
 @prepend('scripts')
     <script src="/js/bootstrap.js"></script>
 @endprepend
-```
 
-## Render once
+@stack('scripts')
 
-Use `@once` when markup should only be emitted once during a render:
-
-```php
 @once('chart-library')
     <script src="/js/chart.js"></script>
 @endonce
 ```
 
-An identifier can be omitted:
+The `@once` identifier may be omitted.
 
-```php
-@once
-    ...
-@endonce
-```
+## View slots
 
-## Slots
-
-Hax also provides section-manager slots:
+Section-manager slots are separate from component named slots:
 
 ```php
 @slot('toolbar')
     <button>Save</button>
 @endslot
-```
 
-Render a slot with:
-
-```php
 @yieldSlot('toolbar')
 ```
 
-These are separate from the `<x-slot:name>` syntax used by view components.
-
-## JSON
-
-Use `@json` to JSON-encode a PHP value:
+## Helper directives
 
 ```html
-<script>
-    const user = @json($user);
-</script>
-```
+@json($user)
+@csrf
+@method('PUT')
 
-## Forms
-
-### CSRF field
-
-```html
-<form method="POST">
-    @csrf
-</form>
-```
-
-### HTTP method field
-
-```html
-<form method="POST">
-    @method('PUT')
-</form>
-```
-
-### Conditional attributes
-
-```html
 <input type="checkbox" @checked($enabled)>
-
 <option @selected($selected)>Uganda</option>
-
 <button @disabled($processing)>Submit</button>
 ```
 
-## Conditional classes
-
-`@class` builds a class attribute from an array:
+Conditional classes and styles:
 
 ```php
 @class([
@@ -346,13 +227,7 @@ Use `@json` to JSON-encode a PHP value:
     'btn-primary' => $primary,
     'disabled' => $disabled,
 ])
-```
 
-## Conditional styles
-
-`@style` provides the equivalent helper for inline styles:
-
-```php
 @style([
     'display: none' => $hidden,
     'font-weight: bold' => $important,
@@ -361,15 +236,11 @@ Use `@json` to JSON-encode a PHP value:
 
 ## Custom directives
 
-Applications and packages can register their own `@directives`:
-
 ```php
 view()->compiler()->directive('datetime', function ($expression) {
     return "<?php echo date('Y-m-d H:i', {$expression}); ?>";
 });
 ```
-
-Then use the directive normally:
 
 ```php
 @datetime($createdAt)
@@ -377,7 +248,7 @@ Then use the directive normally:
 
 ## Extending Hax
 
-Packages can add syntax that is not naturally represented by an `@directive` through compiler extensions:
+Packages can register transformations that operate on the full template:
 
 ```php
 view()->compiler()->extend(
@@ -387,13 +258,11 @@ view()->compiler()->extend(
 );
 ```
 
-For example, Yuga Live Components registers its `<ylc:mount ... />` syntax this way instead of adding YLC-specific behavior to the Yuga framework.
-
-See [Extending the Hax Compiler](extending-hax.md) for package integration details.
+This keeps package-specific syntax outside Yuga's core compiler. See [Extending the Hax Compiler](extending-hax.md).
 
 ## Compilation order
 
-The current compiler processes Hax source through these major passes:
+The compiler currently processes:
 
 1. comments
 2. fragments
@@ -408,5 +277,5 @@ The resulting PHP is cached and evaluated by the view engine.
 
 - [Rendering Views](rendering.md)
 - [Layouts, Components, Slots, and Fragments](layouts-components.md)
-- [View Namespaces and Composers](namespaces-composers.md)
+- [View Namespaces, Shared Data, and Composers](namespaces-composers.md)
 - [Extending the Hax Compiler](extending-hax.md)
