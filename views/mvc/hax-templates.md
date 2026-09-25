@@ -1,116 +1,412 @@
 ---
-description: Hax is a very simple but powerful template engine
+description: Hax is Yuga's simple, compiled PHP template engine
 ---
 
 # Hax Templates
 
-&#x20;Hax is a simple, yet powerful template engine that comes with yuga. Unlike most of the PHP template engines, Hax does not restrict you from using plain PHP code in your views. Actually, all Hax views are compiled into plain PHP code and cached until they are edited, this means Hax adds basically no overhead to your application. Hax view files use the `.hax.php` file extension and are typically stored in the `resources/views` directory inside of the main directory of your main application.
+Hax is Yuga's template engine for MVC views. It adds convenient template syntax while still allowing ordinary PHP when you need it.
 
-### [Template Inheritance](https://yuga-framework.gitbook.io/documentation/views/mvc/hax-templates#template-inheritance)
+Hax templates use the `.hax.php` extension and are normally stored in `resources/views`. They are compiled to plain PHP and cached, so the template syntax does not need to be interpreted on every render.
 
-#### [Defining a Layout](https://yuga-framework.gitbook.io/documentation/views/mvc/hax-templates#defining-a-layout)
+```text
+resources/
+└── views/
+    ├── layouts/
+    │   └── app.hax.php
+    ├── components/
+    │   └── alert.hax.php
+    └── users/
+        └── profile.hax.php
+```
 
-&#x20;There're two primary advantages of using **Hax** i.e; _template inheritance_ and _sections_. To get started, let's take a look at a simple example. First, we will define a **default** page layout. Since most web applications maintain the same general layout across various pages, it's convenient to define this layout as a single **Hax** view:
+A view can be rendered with:
 
 ```php
-<!-- Saved in resources/views/layouts/layout.hax.php -->
+return view('users.profile', [
+    'user' => $user,
+]);
+```
 
+## Displaying data
+
+Use double curly braces for escaped output:
+
+```html
+<h1>Hello, {{ $user->name }}</h1>
+```
+
+Hax escapes this output with `htmlspecialchars`.
+
+For trusted content that should not be escaped, use raw echo syntax:
+
+```html
+{!! $html !!}
+```
+
+Hax also supports a default-value form for variables:
+
+```html
+{{ $name or 'Guest' }}
+```
+
+## Comments
+
+Hax comments are removed during compilation:
+
+```html
+{{-- This will not be included in the rendered HTML. --}}
+```
+
+## Template inheritance
+
+Layouts allow several pages to share the same structure.
+
+### Defining a layout
+
+```html
+<!-- resources/views/layouts/app.hax.php -->
+
+<!doctype html>
 <html>
-    <head>
-        <title>Your App Name - @yield('title')</title>
-    </head>
-    <body>
-        @section('nav-bar')
-            This is the main nav bar.
-        @endsection
-
-        <div class="container">
-            @yield('main')
-        </div>
-    </body>
+<head>
+    <title>@yield('title')</title>
+</head>
+<body>
+    <main>
+        @yield('content')
+    </main>
+</body>
 </html>
 ```
 
-As you can see, this file contains HTML mark-up. However, take note of the `@section` and `@yield` directives. The `@section` directive, as the name says, defines a section of content, while the `@yield` directive is used to display contents of a given section where the `@yield` directive is found.
-
-Now that we have defined a layout for our application, let's define a child page that inherits the layout.
-
-#### [Extending A Layout](https://yuga-framework.gitbook.io/documentation/views/mvc/hax-templates#extending-a-layout)
-
-When defining a child view, we typically use the Hax `@extends` directive to specify which layout the child view should "inherit". Views that extend a Hax layout can insert content into the layout's sections using `@section` directives. Remember, as seen in the example above, the contents of these sections will be displayed in the layout using `@yield`:
+### Extending a layout
 
 ```php
-<!-- Stored in resources/views/users.hax.php -->
+@extends('layouts.app')
 
-@extends('layouts.layout')
-
-@section('title') 
-    Page Title 
+@section('title')
+    User Profile
 @endsection
 
-@section('nav-bar')
+@section('content')
+    <h1>{{ $user->name }}</h1>
+@endsection
+```
+
+### Parent section content
+
+Use `@parent` when a child section should retain content defined by its parent:
+
+```php
+@section('sidebar')
     @parent
 
-    <p>This is appended to the master nav-bar.</p>
-@endsection
-
-@section('main')
-    <p>This is my body content.</p>
+    <a href="/profile">Profile</a>
 @endsection
 ```
 
-### [Displaying Data](https://yuga-framework.gitbook.io/documentation/views/mvc/hax-templates#displaying-data)
+## Includes
 
-You can display data passed to your Hax views by wrapping the variable in curly braces. For example, given the following route:
+Use `@include` to render another view:
 
 ```php
-Route::get('hello', function () {
-    return view('details', ['name' => 'John Doe']);
-});
+@include('partials.header')
 ```
 
-You can display the contents of the `name` variable like below:
+The included view receives the variables currently defined in the parent template.
+
+You can also pass additional data:
 
 ```php
-Hello, {{ $name }}.
+@include('partials.user', ['user' => $user])
 ```
 
-### [Control Structures](https://yuga-framework.gitbook.io/documentation/views/mvc/hax-templates#control-structures)
+## Conditionals
 
-In addition to template inheritance and displaying data, Hax also provides convenient shortcuts for common PHP control structures, such as conditional statements and loops.
-
-#### [If Statements](https://yuga-framework.gitbook.io/documentation/views/mvc/hax-templates#if-statements)
-
-You may construct `if` statements using the `@if`, `@elseif`, `@else`, and `@endif` directives. These directives function identically to their PHP counterparts:
+Hax conditionals map directly to PHP conditionals:
 
 ```php
-@if (count($items) === 1)
-    You have one item!
-@elseif (count($items) > 1)
-    You have multiple items!
+@if ($user->isAdmin())
+    <p>Administrator</p>
+@elseif ($user->isModerator())
+    <p>Moderator</p>
 @else
-    You don't have any items!
+    <p>User</p>
 @endif
 ```
 
-#### [Loops](https://yuga-framework.gitbook.io/documentation/views/mvc/hax-templates#loops)
+## Loops
 
-In addition to conditional statements, Hax provides simple directives for working with PHP's loop structures. Each of these directives functions identically to their PHP counterparts:
+### Foreach
+
+```php
+@foreach ($users as $user)
+    <p>{{ $user->name }}</p>
+@endforeach
+```
+
+### For
 
 ```php
 @for ($i = 0; $i < 10; $i++)
-    The index is {{ $i }}
+    <span>{{ $i }}</span>
 @endfor
+```
 
-@foreach ($users as $user)
-    <p>This is user {{ $user->id }}</p>
-@endforeach
+### While
 
-@forelse ($users as $user)
-    <li>{{ $user->name }}</li>
-@endforelse
-
-@while (true)
-    <p>This loop will run forever.</p>
+```php
+@while ($condition)
+    ...
 @endwhile
 ```
+
+## Raw PHP
+
+For small pieces of PHP, pass an expression directly:
+
+```php
+@php($total = count($items))
+```
+
+For a PHP block:
+
+```php
+@php
+    $total = count($items);
+    $label = 'items';
+@endphp
+```
+
+Because Hax compiles to PHP, ordinary PHP can also be used in a template when appropriate.
+
+## Components
+
+Reusable view components use the `x-` syntax.
+
+### Self-closing components
+
+```html
+<x-alert type="success" :message="$message" />
+```
+
+Literal attributes are strings. Prefix an attribute with `:` to treat its value as a PHP expression.
+
+Boolean attributes are also supported:
+
+```html
+<x-button disabled />
+```
+
+### Components with content
+
+```html
+<x-card title="Account">
+    <p>Account details</p>
+</x-card>
+```
+
+The wrapped content becomes the component's default slot.
+
+### Named slots
+
+```html
+<x-card>
+    <x-slot:header>
+        Account
+    </x-slot:header>
+
+    <p>Account details</p>
+</x-card>
+```
+
+For more detail, see [Layouts, Components, Slots, and Fragments](layouts-components.md).
+
+## Fragments
+
+A Hax template can define named fragments:
+
+```html
+<fragment name="results">
+    @foreach ($results as $result)
+        <div>{{ $result->name }}</div>
+    @endforeach
+</fragment>
+```
+
+Fragments allow the view engine and packages built on it to address a specific rendered portion of a view.
+
+## Stacks
+
+Stacks are useful for content that a child view or component wants to contribute to another location, such as scripts or styles.
+
+Push content:
+
+```php
+@push('scripts')
+    <script src="/js/dashboard.js"></script>
+@endpush
+```
+
+Render the stack:
+
+```php
+@stack('scripts')
+```
+
+Content can be inserted before existing pushed content with:
+
+```php
+@prepend('scripts')
+    <script src="/js/bootstrap.js"></script>
+@endprepend
+```
+
+## Render once
+
+Use `@once` when markup should only be emitted once during a render:
+
+```php
+@once('chart-library')
+    <script src="/js/chart.js"></script>
+@endonce
+```
+
+An identifier can be omitted:
+
+```php
+@once
+    ...
+@endonce
+```
+
+## Slots
+
+Hax also provides section-manager slots:
+
+```php
+@slot('toolbar')
+    <button>Save</button>
+@endslot
+```
+
+Render a slot with:
+
+```php
+@yieldSlot('toolbar')
+```
+
+These are separate from the `<x-slot:name>` syntax used by view components.
+
+## JSON
+
+Use `@json` to JSON-encode a PHP value:
+
+```html
+<script>
+    const user = @json($user);
+</script>
+```
+
+## Forms
+
+### CSRF field
+
+```html
+<form method="POST">
+    @csrf
+</form>
+```
+
+### HTTP method field
+
+```html
+<form method="POST">
+    @method('PUT')
+</form>
+```
+
+### Conditional attributes
+
+```html
+<input type="checkbox" @checked($enabled)>
+
+<option @selected($selected)>Uganda</option>
+
+<button @disabled($processing)>Submit</button>
+```
+
+## Conditional classes
+
+`@class` builds a class attribute from an array:
+
+```php
+@class([
+    'btn',
+    'btn-primary' => $primary,
+    'disabled' => $disabled,
+])
+```
+
+## Conditional styles
+
+`@style` provides the equivalent helper for inline styles:
+
+```php
+@style([
+    'display: none' => $hidden,
+    'font-weight: bold' => $important,
+])
+```
+
+## Custom directives
+
+Applications and packages can register their own `@directives`:
+
+```php
+view()->compiler()->directive('datetime', function ($expression) {
+    return "<?php echo date('Y-m-d H:i', {$expression}); ?>";
+});
+```
+
+Then use the directive normally:
+
+```php
+@datetime($createdAt)
+```
+
+## Extending Hax
+
+Packages can add syntax that is not naturally represented by an `@directive` through compiler extensions:
+
+```php
+view()->compiler()->extend(
+    function (string $value, $compiler): string {
+        return $value;
+    }
+);
+```
+
+For example, Yuga Live Components registers its `<ylc:mount ... />` syntax this way instead of adding YLC-specific behavior to the Yuga framework.
+
+See [Extending the Hax Compiler](extending-hax.md) for package integration details.
+
+## Compilation order
+
+The current compiler processes Hax source through these major passes:
+
+1. comments
+2. fragments
+3. components
+4. echos
+5. statements/directives
+6. registered compiler extensions
+
+The resulting PHP is cached and evaluated by the view engine.
+
+## Related documentation
+
+- [Rendering Views](rendering.md)
+- [Layouts, Components, Slots, and Fragments](layouts-components.md)
+- [View Namespaces and Composers](namespaces-composers.md)
+- [Extending the Hax Compiler](extending-hax.md)
