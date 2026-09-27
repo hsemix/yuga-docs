@@ -6,7 +6,7 @@ description: Hax is Yuga's compiled, HTML-first PHP template engine
 
 Hax is Yuga's template engine for MVC views. It provides convenient template syntax while remaining close to HTML and PHP.
 
-Hax templates use the `.hax.php` extension and are normally stored in `resources/views`. They are compiled to plain PHP and cached.
+Hax templates use the `.hax.php` extension and are normally stored in `resources/views`. They are compiled to plain PHP.
 
 ```text
 resources/
@@ -45,6 +45,8 @@ Comments are removed during compilation:
 ```html
 {{-- This will not be included in the rendered HTML. --}}
 ```
+
+Hax preserves source line positions through supported compilation transforms. This allows runtime errors in compiled templates to be associated with the corresponding Hax source line.
 
 ## Template inheritance
 
@@ -122,7 +124,22 @@ Application components are resolved beneath `resources/views/components`.
 <x-button disabled />
 ```
 
-Literal attributes are strings, `:` marks a PHP expression, and boolean attributes are supported.
+Literal attributes are strings, `:` marks a PHP expression, and attributes without values are boolean attributes.
+
+Bound props can contain normal PHP expressions:
+
+```html
+<x-card
+    :user="$account->owner"
+    :visible="$score > 10"
+    :options="['compact' => true, 'limit' => 10]"
+    :filter="fn ($item) => $item->active"
+/>
+```
+
+Component tags and attributes are quote-aware, so expressions such as PHP's `->` and `=>` operators, comparisons using `>`, and literal strings containing `>` do not terminate the component tag.
+
+Multiline props retain their source positions during compilation. If evaluating a bound prop throws an exception, the error can therefore point to the prop's line in the calling Hax template.
 
 Components may wrap content:
 
@@ -161,7 +178,9 @@ Namespaced package components use the same namespace registry as views:
 <x-blog::forms.input />
 ```
 
-See [Layouts, Components, Slots, and Fragments](layouts-components.md) for component attributes and the attribute bag.
+Errors raised while rendering nested components retain component invocation context, allowing development error output to show the failing Hax source together with the component trace.
+
+See [Layouts, Components, Slots, and Fragments](layouts-components.md) for component attributes, expression examples, component scope, and the attribute bag.
 
 ## Fragments
 
@@ -271,7 +290,7 @@ The compiler currently processes:
 5. statements/directives
 6. registered compiler extensions
 
-The resulting PHP is cached and evaluated by the view engine.
+The resulting PHP is evaluated by the view engine. During compilation, Hax preserves source line positions where supported so runtime errors can be mapped back to the original template.
 
 ## Related documentation
 
