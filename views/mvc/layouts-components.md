@@ -48,21 +48,64 @@ Components can wrap content:
 
 The wrapped content is available to the component as `$slot`.
 
-### Nested components
+### Component attributes and props
 
-Dot notation maps component names to nested directories:
+Component attributes are parsed as Hax attributes before the component is rendered. Literal values are passed as strings:
 
 ```html
-<x-form.input />
+<x-card title="Account" class="dashboard-card" />
 ```
 
-This resolves to:
+Prefix an attribute with `:` to bind its value as a PHP expression:
 
-```text
-resources/views/components/form/input.hax.php
+```html
+<x-card :user="$user" />
 ```
 
-### Component attributes
+Bound attributes support normal PHP expressions, including property and method chains, comparisons, arrays, and arrow functions:
+
+```html
+<x-card
+    :user="$account->owner"
+    :visible="$score > 10"
+    :options="['compact' => true, 'limit' => 10]"
+    :filter="fn ($item) => $item->active"
+/>
+```
+
+Attribute values remain quoted at the Hax level. The quotes delimit the attribute; for a bound attribute, the contents are emitted as PHP rather than passed as a string.
+
+Boolean attributes can be written without a value:
+
+```html
+<x-button disabled required />
+```
+
+Literal quoted values may contain characters that are meaningful to PHP or HTML-like syntax, including `>`:
+
+```html
+<x-card title="A > B" />
+```
+
+Escaped quotes are supported inside quoted values:
+
+```html
+<x-card title="He said \"hello\"" />
+```
+
+Multiline component declarations are supported and are useful for larger prop sets:
+
+```html
+<x-card
+    class="dashboard-card"
+    :user="$account->owner"
+    :visible="$score > 10"
+>
+    <p>Card body</p>
+</x-card>
+```
+
+Bound prop expressions are evaluated in the calling view before the component starts rendering. An exception raised while evaluating a prop therefore belongs to the calling Hax view. Once component rendering begins, errors inside the component are reported against the component's own Hax source.
 
 Attributes are available as individual component variables and through the `$attributes` attribute bag:
 
@@ -94,6 +137,20 @@ For example:
 ```
 
 Attributes supplied by the component caller override defaults passed to `merge()`.
+
+### Nested components
+
+Dot notation maps component names to nested directories:
+
+```html
+<x-form.input />
+```
+
+This resolves to:
+
+```text
+resources/views/components/form/input.hax.php
+```
 
 ### Component scope
 
@@ -130,6 +187,23 @@ blog::components.forms.input
 ```
 
 This means packages do not need a separate component namespace registry. Once a view namespace is registered, its `components` directory is automatically addressable through `<x-namespace::...>`.
+
+## Component error context
+
+Hax preserves source line positions during compilation so runtime errors can be reported against the original `.hax.php` source instead of only the generated PHP.
+
+For example, if a bound prop fails:
+
+```html
+<x-card
+    class="dashboard-card"
+    :user="$account->owner->thisMethodDoesNotExist()"
+>
+```
+
+the error is associated with the prop's line in the calling Hax view.
+
+For errors raised while rendering a component, Yuga also keeps component invocation context. In development, the Hax debugging information can show the failing Hax source together with the component trace, making nested component failures easier to follow.
 
 ## View slots
 
