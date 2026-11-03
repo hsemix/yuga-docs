@@ -11,8 +11,10 @@ If you want to change this setting, you go to `environment/.env` file and locate
 
 **Local Development Server**
 
-If you have PHP installed locally and you would like to use PHP's built-in development server to launch your application, you may use the `start` Yuga command. This command will start a development server at `http://localhost:8000`:
+Use the `start` Yuga command to launch the configured HTTP server. With `runtime_server.http_runtime` set to `php` (the default), it starts PHP's development server at `http://localhost:8000`:
 
 ```bash
 php yuga start
 ```
+
+With RoadRunner configured, the same command can start HTTP and queue workers together. See [Application Runtimes](runtimes.md) for profile selection and [Queues](queue-worker.md) for database workers, payload formats, RoadRunner, and custom adapters.

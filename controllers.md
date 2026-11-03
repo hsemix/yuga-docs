@@ -1,5 +1,18 @@
 # Controllers
 
+## Returning JSON responses
+
+Return the response from the controller so the active runtime can send it:
+
+```php
+public function created()
+{
+    return response()->json(['message' => 'Created'], code: 201);
+}
+```
+
+`json()` and its `jsonResponse()` alias return PSR-7 responses. They no longer terminate execution. Update older call sites that invoked a JSON response without `return`. Do not call `exit()` or `die()` to finish a request under a persistent worker. See [Application Runtimes](runtimes.md).
+
 ## Controllers
 
 Instead of defining all of your request handling logic as Closures in routes/web.php file, you may want to organise them using Controller classes.
